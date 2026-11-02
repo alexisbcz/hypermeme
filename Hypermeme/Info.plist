@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- A menu bar app: the Dock icon appears only while the main window is open. -->
+	<key>LSUIElement</key>
+	<true/>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>dev.alexis.Hypermeme</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>hypermeme</string>
+			</array>
+		</dict>
+	</array>
+	<!-- The release workflow attaches appcast.xml to each release, so the latest one always lists itself. -->
+	<key>SUFeedURL</key>
+	<string>https://github.com/alexisbcz/hypermeme/releases/latest/download/appcast.xml</string>
+	<!-- Signs updates; the private half is the SPARKLE_PRIVATE_KEY secret. -->
+	<key>SUPublicEDKey</key>
+	<string>PVza4iWDZiTFsfqlcQ6UyxPjuCKRzgGCt0ReG/eWSps=</string>
+	<!-- Check daily without asking first. -->
+	<key>SUEnableAutomaticChecks</key>
+	<true/>
+</dict>
+</plist>
