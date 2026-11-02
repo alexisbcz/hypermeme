@@ -119,7 +119,9 @@ private struct BrowseGrid: View {
 
     @ViewBuilder private var empty: some View {
         let browse = model.browse
-        if !browse.query.isEmpty {
+        if browse.searchFailed {
+            EmptyHint(symbol: "wifi.exclamationmark", title: "Search Isn't Reachable", detail: "Hypermeme couldn't reach imgflip.")
+        } else if !browse.query.isEmpty {
             if browse.isSearching {
                 ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {

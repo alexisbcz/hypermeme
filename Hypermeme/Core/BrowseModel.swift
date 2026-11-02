@@ -58,6 +58,14 @@ final class BrowseModel {
         }
     }
 
+    /// A section's own matches, or imgflip's when it has none, so a search always reaches the catalog.
+    private func filtered(_ templates: [MemeTemplate]) -> [MemeTemplate] {
+        let query = trimmedQuery
+        guard !query.isEmpty else { return templates }
+        let matches = templates.filter { $0.score(for: query) != nil }
+        return matches.isEmpty ? remote : matches
+    }
+
     var memes: [SavedMeme] {
         let query = trimmedQuery.lowercased()
         let memes = Library.shared.memes
@@ -69,11 +77,6 @@ final class BrowseModel {
         }
     }
 
-    private func filtered(_ templates: [MemeTemplate]) -> [MemeTemplate] {
-        let query = trimmedQuery
-        return query.isEmpty ? templates : templates.filter { $0.score(for: query) != nil }
-    }
-
     private func search() {
         task?.cancel()
         remote = []
@@ -81,7 +84,7 @@ final class BrowseModel {
         hasMore = false
         searchFailed = false
         let query = trimmedQuery
-        guard section == .popular, !query.isEmpty else {
+        guard section != .memes, !query.isEmpty else {
             isSearching = false
             return
         }
@@ -104,9 +107,9 @@ final class BrowseModel {
 
     /// Called when the grid scrolls near its end.
     func loadMore() async {
-        guard section == .popular else { return }
+        guard section != .memes else { return }
         guard !trimmedQuery.isEmpty else {
-            await Library.shared.loadMore()
+            if section == .popular { await Library.shared.loadMore() }
             return
         }
         guard hasMore, !isLoadingPage else { return }
