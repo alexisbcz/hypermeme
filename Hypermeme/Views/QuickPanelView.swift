@@ -68,6 +68,12 @@ final class QuickPanelModel {
         Toast.show("Copied")
     }
 
+    func downloadEditor() {
+        guard let editor, let file = editor.finish() else { return }
+        Inserter.shared.download(file, name: editor.template.name)
+        onClose()
+    }
+
     func editAgain(_ meme: SavedMeme) {
         guard let editor = MemeEditor(meme: meme) else { return }
         self.editor = editor
@@ -303,6 +309,10 @@ private struct QuickEditor: View {
             HStack(spacing: 8) {
                 Hint(key: "⎋", label: "Back")
                 Spacer()
+                Button("Download") { model.downloadEditor() }
+                    .buttonStyle(.bordered)
+                    .keyboardShortcut("s", modifiers: .command)
+                    .help("Save a PNG to Downloads (⌘S)")
                 Button("Copy") { model.copyEditor() }
                     .buttonStyle(.bordered)
                     .keyboardShortcut("c", modifiers: [.command, .shift])

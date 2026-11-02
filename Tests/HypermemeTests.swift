@@ -85,6 +85,34 @@ import Testing
     }
 }
 
+@Suite struct PasteTarget {
+    @Test func pastesIntoTextAndIntoAppsThatDoNotReportFocus() {
+        #expect(Inserter.canTakePaste(role: "AXTextArea"))
+        #expect(Inserter.canTakePaste(role: "AXTextField"))
+        #expect(Inserter.canTakePaste(role: nil))
+        #expect(Inserter.canTakePaste(role: "AXWebArea"))
+    }
+
+    @Test func waitsWhenNothingFocusedCanTakeIt() {
+        #expect(!Inserter.canTakePaste(role: "AXWindow"))
+        #expect(!Inserter.canTakePaste(role: "AXOutline"))
+    }
+}
+
+@Suite struct Downloads {
+    @Test func neverReplacesAFileAndCleansTheName() throws {
+        let folder = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+
+        let first = Inserter.freeFile(for: "a/b: c", in: folder)
+        #expect(first.lastPathComponent == "a-b- c.png")
+        try Data().write(to: first)
+        #expect(Inserter.freeFile(for: "a/b: c", in: folder).lastPathComponent == "a-b- c 2.png")
+        #expect(Inserter.freeFile(for: " .. ", in: folder).lastPathComponent == "Meme.png")
+    }
+}
+
 @Suite struct CaptionStrip {
     @Test func keepsBoxesOverTheSamePartOfTheImageAndComesBack() {
         var document = MemeDocument(templateID: "a", boxes: [TextBox(text: "hi", x: 0.1, y: 0.5, width: 0.8, height: 0.25)])

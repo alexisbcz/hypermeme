@@ -106,7 +106,12 @@ enum Toast {
     private static var window: NSPanel?
     private static var task: Task<Void, Never>?
 
-    static func show(_ message: String) {
+    static func hide() {
+        task?.cancel()
+        window?.orderOut(nil)
+    }
+
+    static func show(_ message: String, duration: Duration = .seconds(2)) {
         let view = NSHostingView(rootView:
             Text(message)
                 .font(.system(size: 13, weight: .medium))
@@ -131,7 +136,7 @@ enum Toast {
         window = panel
         task?.cancel()
         task = Task {
-            try? await Task.sleep(for: .seconds(2))
+            try? await Task.sleep(for: duration)
             if !Task.isCancelled { panel.orderOut(nil) }
         }
     }

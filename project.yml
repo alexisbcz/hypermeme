@@ -6,7 +6,7 @@ options:
 settings:
   base:
     SWIFT_VERSION: "6.0"
-    MARKETING_VERSION: "0.1.2"
+    MARKETING_VERSION: "0.2.0"
     # Sparkle compares build numbers, so they follow the version: a 1.2.3 build updates to 1.2.4.
     CURRENT_PROJECT_VERSION: $(MARKETING_VERSION)
 packages:

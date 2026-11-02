@@ -13,8 +13,8 @@ A native macOS app for finding, captioning and pasting memes from your menu bar.
 - **Lives in the menu bar.** Press ⌃⌥M anywhere, or click the grin at the top right of the screen. The panel opens over whatever you're doing without taking focus from it. The shortcut can be changed in Settings.
 - **Finds any template.** Search covers imgflip's whole catalog, by name or by the other names people use, like "drakeposting". Popular templates scroll on for as long as you keep going.
 - **Puts the text in the right place.** Each template opens with imgflip's own layout: text boxes in position, rotated where needed, with the right font and colors.
-- **Inserts it where you were typing.** Type a caption and press Return. The meme is pasted into the app you were using, as an image. Without Accessibility access, Insert copies it and you press ⌘V yourself.
-- **Keeps what you make.** My Memes holds every finished meme as a PNG. Search them by caption, insert one again, drag it into another app, or edit it again.
+- **Inserts it where you were typing.** Type a caption and press Return. The meme is pasted into the app you were using, as an image. If nothing there can take it, Hypermeme asks you to click the box you want and pastes it there. Without Accessibility access, Insert copies it and you press ⌘V yourself.
+- **Keeps what you make.** My Memes holds every finished meme as a PNG. Search them by caption, insert one again, download it, drag it into another app, or edit it again.
 - **Edits properly when you want to.** The main window has draggable, resizable and rotatable text, six fonts, text and outline colors, alignment, a soft shadow, and a white caption strip above the image.
 - **Captions your own images.** Drop one on the window, or press ⇧⌘V to use the clipboard.
 - **Runs on your Mac.** Text is drawn locally with no watermark, no account and no imgflip login. An internet connection is needed only for searching and for templates you haven't opened before.

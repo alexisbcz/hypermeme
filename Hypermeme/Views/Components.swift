@@ -137,6 +137,7 @@ struct MemeCell: View {
         .contextMenu {
             if let onInsert { Button("Insert", action: onInsert) }
             Button("Copy") { Inserter.shared.copy(file) }
+            Button("Download") { Inserter.shared.download(file, name: meme.name) }
             if let onEdit { Button("Edit Again", action: onEdit) }
             Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([file]) }
             Divider()
