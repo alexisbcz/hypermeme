@@ -189,13 +189,11 @@ private struct QuickBrowser: View {
                                     onEdit: { model.editAgain(meme) },
                                     onInsert: { model.insert(meme) }
                                 )
-                                .id(index)
                                 .onTapGesture { model.insert(meme) }
                             }
                         } else {
                             ForEach(Array(browse.templates.enumerated()), id: \.element.id) { index, template in
                                 TemplateCell(template: template, isSelected: index == model.selectedIndex)
-                                    .id(index)
                                     .onTapGesture { model.open(template) }
                                     .onAppear {
                                         if index >= browse.templates.count - 6 {
@@ -208,7 +206,12 @@ private struct QuickBrowser: View {
                     .padding(14)
                 }
                 .onChange(of: model.selectedIndex) { _, index in
-                    scroller.scrollTo(index, anchor: nil)
+                    // The grid's ForEach identifies cells by item, so that's what to scroll to.
+                    if browse.section == .memes {
+                        if browse.memes.indices.contains(index) { scroller.scrollTo(browse.memes[index].id, anchor: nil) }
+                    } else if browse.templates.indices.contains(index) {
+                        scroller.scrollTo(browse.templates[index].id, anchor: nil)
+                    }
                 }
             }
         }
