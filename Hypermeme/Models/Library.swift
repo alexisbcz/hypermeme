@@ -15,12 +15,15 @@ final class Library {
     private(set) var recents: [String] = []
     private(set) var loadFailed = false
     private(set) var canLoadMore = true
+    /// Changes when community templates arrive, so a search already on screen picks them up.
+    private(set) var communityVersion = 0
 
     @ObservationIgnored private var known: [String: MemeTemplate] = [:]
     @ObservationIgnored private var catalogDate = Date.distantPast
     /// Page 3 of imgflip's listing is where the API's 100 run out.
     @ObservationIgnored private var nextPage = 3
     @ObservationIgnored private var isLoadingMore = false
+    @ObservationIgnored private var communityDate = Date.distantPast
 
     private struct State: Codable {
         var popular: [MemeTemplate] = []
@@ -68,6 +71,7 @@ final class Library {
 
     /// Fetches the popular templates, at most once a day. The cached list shows meanwhile.
     func refresh() async {
+        await refreshCommunity()
         guard popular.isEmpty || Date().timeIntervalSince(catalogDate) > 86_400 else { return }
         do {
             let list = try await Imgflip.popular()
@@ -82,6 +86,22 @@ final class Library {
             loadFailed = popular.isEmpty
         }
     }
+
+    /// Fetches the templates imgflip doesn't have, at most once an hour. They're kept with the
+    /// known templates, so search finds them, and favorites and recents keep them, offline too.
+    func refreshCommunity() async {
+        guard Date().timeIntervalSince(communityDate) > 3_600 else { return }
+        guard let templates = try? await Community.templates() else { return }
+        communityDate = Date()
+        let ids = Set(templates.map(\.id))
+        known = known.filter { !$0.key.hasPrefix(MemeTemplate.communityPrefix) || ids.contains($0.key) || isKept($0.key) }
+        for template in templates { known[template.id] = template }
+        communityVersion += 1
+        save()
+    }
+
+    /// A template still in favorites or recents stays known after it leaves the community index.
+    private func isKept(_ id: String) -> Bool { favorites.contains(id) || recents.contains(id) }
 
     func loadMore() async {
         guard canLoadMore, !isLoadingMore, !popular.isEmpty else { return }
@@ -120,6 +140,7 @@ final class Library {
 
     /// Every template Hypermeme has seen that matches, best first.
     func localMatches(_ query: String) -> [MemeTemplate] {
+        _ = communityVersion
         let all = uploads + popular + known.values.filter { known in !popular.contains { $0.id == known.id } }
         return all.compactMap { template in template.score(for: query).map { (template, $0) } }
             .enumerated()
@@ -135,7 +156,7 @@ final class Library {
 
     /// Looks up imgflip's layout for a template, if it isn't known yet.
     func resolved(_ template: MemeTemplate) async -> MemeTemplate {
-        guard !template.isUpload, template.boxes == nil else { return template }
+        guard !template.isUpload, template.sourceImageURL == nil, template.boxes == nil else { return template }
         let slug = template.slug ?? template.name.replacingOccurrences(of: " ", with: "-")
         guard let details = try? await Imgflip.details(slug: slug) else { return template }
         remember(details)

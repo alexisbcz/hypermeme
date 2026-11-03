@@ -23,7 +23,7 @@ final class MemeEditor {
 
     init(template: MemeTemplate, document: MemeDocument? = nil) {
         self.template = template
-        self.document = document ?? MemeDocument(templateID: template.id, boxes: template.startingBoxes)
+        self.document = document ?? template.startingDocument
         selection = self.document.boxes.first?.id
     }
 

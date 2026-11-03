@@ -13,20 +13,35 @@ nonisolated struct MemeTemplate: Codable, Identifiable, Hashable, Sendable {
     var altNames = ""
     /// imgflip's layout, once known.
     var boxes: [TextBox]?
+    /// Where a template from outside imgflip is downloaded from. Optional, like `captionStrip`,
+    /// so libraries saved before it existed still load.
+    var sourceImageURL: URL?
+    /// Starts with a caption strip above the image, as memes posted on X are.
+    var captionStrip: Bool?
+
+    static let communityPrefix = "community-"
 
     var isUpload: Bool { id.hasPrefix("upload-") }
 
     var imageURL: URL? {
-        isUpload ? nil : URL(string: "https://i.imgflip.com/\(id).\(fileType)")
+        if let sourceImageURL { return sourceImageURL }
+        return isUpload ? nil : URL(string: "https://i.imgflip.com/\(id).\(fileType)")
     }
 
     var thumbnailURL: URL? {
-        isUpload ? nil : URL(string: "https://i.imgflip.com/4/\(id).jpg")
+        if let sourceImageURL { return sourceImageURL }
+        return isUpload ? nil : URL(string: "https://i.imgflip.com/4/\(id).jpg")
     }
 
     var startingBoxes: [TextBox] {
         let boxes = boxes ?? TextBox.defaults(count: boxCount)
-        return boxes.isEmpty ? TextBox.defaults(count: 2) : boxes
+        return boxes.isEmpty && captionStrip != true ? TextBox.defaults(count: 2) : boxes
+    }
+
+    var startingDocument: MemeDocument {
+        var document = MemeDocument(templateID: id, boxes: startingBoxes)
+        if captionStrip == true { document.setCaptionStrip(true) }
+        return document
     }
 
     /// Matches every word of a query against the name and the other names.

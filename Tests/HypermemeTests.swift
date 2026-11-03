@@ -190,3 +190,49 @@ import Testing
         #expect(word < 60)
     }
 }
+
+@Suite struct CommunityTemplates {
+    private let index = #"""
+    {"version":1,"templates":[{"id":"paris-cafe-riot","name":"Parisian Café During a Riot",
+     "aliases":["woman drinking coffee during riot"],"description":"A woman sips an espresso while riot police line up.",
+     "usage":"Staying calm while everything falls apart.","tags":["calm","paris"],"image":"image.jpg","width":720,"height":405,
+     "captionStrip":true,"boxes":[],"source":{"url":"https://x.com/a/status/1"},
+     "imageURL":"https://raw.githubusercontent.com/alexisbcz/hypermeme-templates/main/templates/paris-cafe-riot/image.jpg"},
+     {"id":"boxed","name":"Boxed","aliases":[],"description":"d","usage":"u","tags":[],"image":"image.png","width":10,"height":10,
+     "captionStrip":false,"boxes":[{"x":0.1,"y":0.2,"width":0.5,"height":0.3,"font":"arial","allCaps":false}],"source":{"url":"u"},
+     "imageURL":"https://example.com/boxed/image.png"}]}
+    """#
+
+    @Test func readsTheIndexAndDownloadsFromIt() throws {
+        let templates = try Community.parse(Data(index.utf8))
+        let cafe = try #require(templates.first)
+        #expect(cafe.id == "community-paris-cafe-riot")
+        #expect(cafe.imageURL?.lastPathComponent == "image.jpg")
+        #expect(cafe.thumbnailURL == cafe.imageURL)
+        #expect(templates[1].fileType == "png")
+        #expect(templates[1].boxes?.first?.font == .arial)
+        #expect(templates[1].boxes?.first?.allCaps == false)
+    }
+
+    @Test func isFoundByWhatItMeans() throws {
+        let cafe = try #require(Community.parse(Data(index.utf8)).first)
+        #expect(cafe.score(for: "coffee riot") != nil)
+        #expect(cafe.score(for: "calm espresso") != nil)
+        #expect(cafe.score(for: "drake") == nil)
+    }
+
+    @Test func opensWithACaptionStripAndNothingElse() throws {
+        let cafe = try #require(Community.parse(Data(index.utf8)).first)
+        let document = cafe.startingDocument
+        #expect(document.captionStrip > 0)
+        #expect(document.boxes.count == 1)
+        #expect(MemeTemplate(id: "a", name: "A").startingDocument.boxes.count == 2)
+    }
+
+    @Test func templatesSavedBeforeStillLoad() throws {
+        let saved = #"{"id":"30b1gx","name":"Drake","fileType":"jpg","boxCount":2,"altNames":""}"#
+        let template = try JSONDecoder().decode(MemeTemplate.self, from: Data(saved.utf8))
+        #expect(template.sourceImageURL == nil)
+        #expect(template.imageURL?.absoluteString == "https://i.imgflip.com/30b1gx.jpg")
+    }
+}
