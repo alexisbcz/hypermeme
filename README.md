@@ -4,7 +4,7 @@
 
 # Hypermeme
 
-A native macOS app for finding, captioning and pasting memes from your menu bar. Imgflip as a Mac app, made with SwiftUI.
+An app for finding, captioning and pasting memes without leaving what you're doing. Imgflip as a native app: SwiftUI on macOS, and GTK on [Omarchy](https://omarchy.org) and other Hyprland setups.
 
 ![Hypermeme editing a Two Buttons meme](docs/screenshot.png)
 
@@ -70,6 +70,44 @@ curl -fsSL https://raw.githubusercontent.com/alexisbcz/hypermeme/main/install.sh
 ```
 
 This builds Hypermeme with Xcode and installs it in Applications. For development, `make run` builds and starts it, and `make test` runs the tests.
+
+## On Omarchy
+
+Hypermeme runs on [Omarchy](https://omarchy.org), and on any Arch system with Hyprland. Install it with the same command as on a Mac:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/alexisbcz/hypermeme/main/install.sh | bash
+```
+
+Then press **Super+Ctrl+M** anywhere. The panel opens over what you're doing, like Omarchy's own menus. Search, pick a template, type the captions and press Return: the meme is pasted into the window you were in, the way Omarchy's universal paste (Super+V) sends Ctrl+V. Click beside the panel or press Escape to close it. In a terminal, Ctrl+V reaches the program inside, so the meme pastes into tools that take images, like Claude Code.
+
+It works the way the Mac app does: imgflip's whole catalog and layouts, My Memes, favorites, your own images (drop one on the window, or press Ctrl+Shift+V), and a main window with the full editor. The differences:
+
+- **It follows your Omarchy theme.** Colors come from the current theme's `colors.toml`, and Hypermeme restyles itself when you switch themes.
+- **Fonts are open look-alikes.** Impact, Comic Sans and Marker Felt aren't on Linux, so Anton, Comic Neue and Permanent Marker ship with Hypermeme. Arial, Helvetica and Georgia use Liberation and Noto.
+- **Copy uses wl-clipboard,** and the shortcut lives in Hyprland, not in Settings.
+- **The panel is a layer-shell overlay.** It keeps no window of its own, so it never lands on a workspace.
+
+The installer:
+
+- installs what's missing with pacman (python-gobject, gtk4, libadwaita, gtk4-layer-shell, wl-clipboard)
+- puts Hypermeme in `~/.local/lib/hypermeme`, with the `hypermeme` command in `~/.local/bin`
+- adds a launcher entry, and registers `hypermeme://` links
+- adds the shortcut to `~/.config/hypr/bindings.lua` and a login item to `autostart.lua`, between `>>> hypermeme >>>` markers, backing both files up first
+- reloads Hyprland and checks it accepted the change
+
+Pass options after `bash -s --`: `--key "SUPER + ALT + M"` picks another shortcut, `--no-bind` and `--no-autostart` leave Hyprland alone, and `--uninstall` removes Hypermeme and its lines again. Your memes stay in `~/.local/share/hypermeme`.
+
+From the command line:
+
+```sh
+hypermeme toggle                  # open or close the panel
+hypermeme panel drake             # open the panel, searching
+hypermeme edit "two buttons" "ship it" "write tests" --panel
+xdg-open 'hypermeme://search?q=boat cat'
+```
+
+For development, `make -C linux run` starts it from the checkout, and `make -C linux test` runs the tests.
 
 ## Releasing
 

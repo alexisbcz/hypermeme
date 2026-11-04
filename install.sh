@@ -1,6 +1,7 @@
 #!/bin/bash
 #
 # Builds Hypermeme from source and installs it into /Applications.
+# On Linux it runs linux/install.sh instead, which sets Hypermeme up for Omarchy.
 #
 #   curl -fsSL https://raw.githubusercontent.com/alexisbcz/hypermeme/main/install.sh | bash
 #
@@ -158,7 +159,25 @@ find_xcodegen() {
   info "XcodeGen $("$XCODEGEN" --version 2>/dev/null | awk '{print $NF}')"
 }
 
+# Linux (Omarchy, Hyprland) has its own installer, in linux/.
+install_linux() {
+  local here
+  here=$(cd "$(dirname "${BASH_SOURCE[0]:-.}")" 2>/dev/null && pwd || true)
+  if [[ -n $here && -x $here/linux/install.sh && -d $here/linux/hypermeme ]]; then
+    exec "$here/linux/install.sh" "$@"
+  fi
+  # Piped from curl: fetch the Linux installer for the same ref.
+  local ref=main previous=""
+  for arg in "$@"; do
+    [[ $previous == --ref ]] && ref=$arg
+    previous=$arg
+  done
+  curl -fsSL "https://raw.githubusercontent.com/$REPO/$ref/linux/install.sh" | bash -s -- "$@"
+  exit "${PIPESTATUS[1]}"
+}
+
 main() {
+  [[ "$(uname -s)" == Linux ]] && install_linux "$@"
   local ref=main dest="" open=1 remove=0
   while (($#)); do
     case $1 in

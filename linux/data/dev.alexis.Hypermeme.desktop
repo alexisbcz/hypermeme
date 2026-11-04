@@ -1,0 +1,18 @@
+[Desktop Entry]
+Type=Application
+Name=Hypermeme
+GenericName=Meme Maker
+Comment=Find, caption and paste memes
+Exec=@BIN@ %u
+Icon=dev.alexis.Hypermeme
+Terminal=false
+Categories=Graphics;GTK;
+Keywords=meme;imgflip;caption;gif;image;
+MimeType=x-scheme-handler/hypermeme;
+StartupNotify=true
+StartupWMClass=dev.alexis.Hypermeme
+Actions=panel;
+
+[Desktop Action panel]
+Name=Open the Quick Panel
+Exec=@BIN@ panel

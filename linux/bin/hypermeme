@@ -1,0 +1,35 @@
+#!/bin/bash
+# Starts Hypermeme, or hands the command to the copy that's already running.
+#
+# Opening the panel is the hot path (it runs on a keypress), so when Hypermeme is
+# already up, the panel is toggled straight over D-Bus without starting Python.
+
+APP_ID=dev.alexis.Hypermeme
+OBJECT=/dev/alexis/Hypermeme
+
+action() {
+  gdbus call --session --dest "$APP_ID" --object-path "$OBJECT" \
+    --method org.freedesktop.Application.ActivateAction "$1" '[]' '{}' >/dev/null 2>&1
+}
+
+if [[ $# -eq 1 ]] && command -v gdbus >/dev/null; then
+  case $1 in
+    toggle) action toggle-panel && exit 0 ;;
+    panel) action panel && exit 0 ;;
+  esac
+fi
+
+# The resolved location of this script, so a symlink in ~/.local/bin works.
+here=$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")
+root=${HYPERMEME_ROOT:-$(dirname "$here")}
+
+# gtk4-layer-shell has to load before libwayland-client for the panel to be an overlay.
+for lib in /usr/lib/libgtk4-layer-shell.so /usr/lib64/libgtk4-layer-shell.so /usr/lib/x86_64-linux-gnu/libgtk4-layer-shell.so; do
+  if [[ -e $lib ]]; then
+    export LD_PRELOAD="$lib${LD_PRELOAD:+:$LD_PRELOAD}"
+    break
+  fi
+done
+
+export PYTHONPATH="$root${PYTHONPATH:+:$PYTHONPATH}"
+exec python3 -m hypermeme "$@"

@@ -1,0 +1,26 @@
+# Tests the Linux version, on Arch like Omarchy.
+
+name: Linux
+
+on:
+  push:
+    branches: [main]
+    paths: ["linux/**", "install.sh", ".github/workflows/linux.yml"]
+  pull_request:
+    paths: ["linux/**", "install.sh", ".github/workflows/linux.yml"]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    container: archlinux:latest
+    steps:
+      - name: Install dependencies
+        run: pacman -Syu --noconfirm --needed python-gobject python-cairo gtk4 libadwaita gtk4-layer-shell pango gdk-pixbuf2 ttf-liberation git make
+
+      - uses: actions/checkout@v7
+
+      - name: Check the scripts
+        run: for script in install.sh linux/install.sh linux/bin/hypermeme; do bash -n "$script"; done
+
+      - name: Test
+        run: make -C linux test
