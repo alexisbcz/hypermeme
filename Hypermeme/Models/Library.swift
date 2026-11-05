@@ -169,6 +169,17 @@ final class Library {
         Self.folder.appending(path: "Templates/\(template.id).\(template.isUpload ? "png" : template.fileType)")
     }
 
+    /// A video template's MP4, downloaded the first time it's used.
+    func video(for template: MemeTemplate) async throws -> URL {
+        let file = Self.folder.appending(path: "Templates/\(template.id).mp4")
+        if !FileManager.default.fileExists(atPath: file.path), let url = template.videoURL {
+            let (data, response) = try await Imgflip.session.data(from: url)
+            guard (response as? HTTPURLResponse)?.statusCode == 200 else { throw Imgflip.Failure.badResponse }
+            try data.write(to: file, options: .atomic)
+        }
+        return file
+    }
+
     func image(for template: MemeTemplate) async throws -> CGImage {
         let file = templateFile(template)
         if !FileManager.default.fileExists(atPath: file.path), let url = template.imageURL {
@@ -247,12 +258,19 @@ final class Library {
 
     // MARK: Finished memes
 
+    /// What gets inserted: the PNG, or a video meme's MP4.
     func file(for meme: SavedMeme) -> URL {
+        Self.folder.appending(path: "Memes/\(meme.id.uuidString).\(meme.isVideo == true ? "mp4" : "png")")
+    }
+
+    /// The picture to show for a meme: the PNG itself, or a video meme's poster.
+    func thumbnail(for meme: SavedMeme) -> URL {
         Self.folder.appending(path: "Memes/\(meme.id.uuidString).png")
     }
 
-    /// Writes the full-size PNG. Saving the same meme twice gives back the first copy.
-    func save(_ document: MemeDocument, on image: CGImage, template: MemeTemplate) -> SavedMeme? {
+    /// Writes the full-size PNG, and for a video template the MP4 with the captions drawn in.
+    /// Saving the same meme twice gives back the first copy.
+    func save(_ document: MemeDocument, on image: CGImage, template: MemeTemplate) async -> SavedMeme? {
         noteUsed(template)
         if let existing = memes.first(where: { $0.document == document }),
            FileManager.default.fileExists(atPath: file(for: existing).path) {
@@ -260,8 +278,16 @@ final class Library {
         }
         guard let rendered = MemeRenderer.render(image, document: document),
               let png = MemeRenderer.png(rendered) else { return nil }
-        let meme = SavedMeme(name: template.name, document: document)
-        do { try png.write(to: file(for: meme), options: .atomic) } catch { return nil }
+        let meme = SavedMeme(name: template.name, document: document, isVideo: template.isVideo ? true : nil)
+        do {
+            try png.write(to: thumbnail(for: meme), options: .atomic)
+            if template.isVideo {
+                try await VideoExporter.export(video(for: template), document: document, to: file(for: meme))
+            }
+        } catch {
+            try? FileManager.default.removeItem(at: thumbnail(for: meme))
+            return nil
+        }
         memes.insert(meme, at: 0)
         save()
         return meme
@@ -270,6 +296,7 @@ final class Library {
     func delete(_ meme: SavedMeme) {
         memes.removeAll { $0.id == meme.id }
         try? FileManager.default.removeItem(at: file(for: meme))
+        try? FileManager.default.removeItem(at: thumbnail(for: meme))
         save()
     }
 

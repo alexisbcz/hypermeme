@@ -210,16 +210,19 @@ private struct EditorView: View {
                     .font(.system(size: 12))
                     .foregroundStyle(Color.subdued)
                     .help("Drag this into another app to drop the meme there")
-                    .onDrag {
-                        editor.finish().flatMap(NSItemProvider.init(contentsOf:)) ?? NSItemProvider()
-                    }
+                    .onDrag(dragItem)
                 Spacer()
+                if editor.isFinishing {
+                    ProgressView().controlSize(.small)
+                }
                 Button("Insert in Last App") {
-                    if let file = editor.finish() { Inserter.shared.insert(file, reactivate: true) }
+                    Task {
+                        if let file = await editor.finish() { Inserter.shared.insert(file, reactivate: true) }
+                    }
                 }
                 .buttonStyle(.borderedProminent)
                 .keyboardShortcut(.return, modifiers: .command)
-                .disabled(editor.image == nil)
+                .disabled(editor.image == nil || editor.isFinishing)
             }
             .padding(12)
         }
@@ -235,20 +238,38 @@ private struct EditorView: View {
         )
     }
 
+    /// The meme is made when the drop lands, since a video takes a moment to write.
+    private func dragItem() -> NSItemProvider {
+        let provider = NSItemProvider()
+        let type: UTType = editor.template.isVideo ? .mpeg4Movie : .png
+        provider.registerFileRepresentation(forTypeIdentifier: type.identifier, visibility: .all) { [editor] completion in
+            Task { @MainActor in
+                let file = await editor.finish()
+                completion(file, false, file == nil ? CocoaError(.fileWriteUnknown) : nil)
+            }
+            return nil
+        }
+        return provider
+    }
+
     private func copy() {
-        guard let file = editor.finish() else { return }
-        Inserter.shared.copy(file)
-        Toast.show("Copied")
+        Task {
+            guard let file = await editor.finish() else { return }
+            Inserter.shared.copy(file)
+            Toast.show("Copied")
+        }
     }
 
     private func saveAs() {
-        guard let file = editor.finish() else { return }
-        let panel = NSSavePanel()
-        panel.allowedContentTypes = [.png]
-        panel.nameFieldStringValue = "\(editor.template.name).png"
-        guard panel.runModal() == .OK, let url = panel.url else { return }
-        try? FileManager.default.removeItem(at: url)
-        try? FileManager.default.copyItem(at: file, to: url)
+        Task {
+            guard let file = await editor.finish() else { return }
+            let panel = NSSavePanel()
+            panel.allowedContentTypes = [editor.template.isVideo ? .mpeg4Movie : .png]
+            panel.nameFieldStringValue = "\(editor.template.name).\(file.pathExtension)"
+            guard panel.runModal() == .OK, let url = panel.url else { return }
+            try? FileManager.default.removeItem(at: url)
+            try? FileManager.default.copyItem(at: file, to: url)
+        }
     }
 }
 

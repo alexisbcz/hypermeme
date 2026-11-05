@@ -40,7 +40,13 @@ final class Inserter {
     }
 
     /// The image for apps that take pixels, and the file for apps that only take files.
+    /// A video can only go as a file, which chat apps attach on paste.
     func copy(_ file: URL) {
+        if file.pathExtension == "mp4" {
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.writeObjects([file as NSURL])
+            return
+        }
         guard let data = try? Data(contentsOf: file), let image = NSImage(data: data) else { return }
         let item = NSPasteboardItem()
         item.setData(data, forType: .png)
@@ -53,7 +59,7 @@ final class Inserter {
     /// Saves a copy of the meme in Downloads, without replacing anything already there.
     func download(_ file: URL, name: String) {
         do {
-            let destination = Self.freeFile(for: name, in: .downloadsDirectory)
+            let destination = Self.freeFile(for: name, in: .downloadsDirectory, extension: file.pathExtension)
             try FileManager.default.copyItem(at: file, to: destination)
             Toast.show("Saved to Downloads")
         } catch {
@@ -62,14 +68,14 @@ final class Inserter {
     }
 
     /// "Name.png", or "Name 2.png" and so on when that's taken.
-    nonisolated static func freeFile(for name: String, in folder: URL) -> URL {
+    nonisolated static func freeFile(for name: String, in folder: URL, extension ext: String = "png") -> URL {
         let cleaned = name.replacingOccurrences(of: "/", with: "-").replacingOccurrences(of: ":", with: "-")
             .trimmingCharacters(in: .whitespacesAndNewlines.union(CharacterSet(charactersIn: ".")))
         let base = cleaned.isEmpty ? "Meme" : cleaned
-        var file = folder.appending(path: "\(base).png")
+        var file = folder.appending(path: "\(base).\(ext)")
         var number = 2
         while FileManager.default.fileExists(atPath: file.path) {
-            file = folder.appending(path: "\(base) \(number).png")
+            file = folder.appending(path: "\(base) \(number).\(ext)")
             number += 1
         }
         return file

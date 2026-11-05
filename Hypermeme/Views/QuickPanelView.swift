@@ -56,22 +56,28 @@ final class QuickPanelModel {
     }
 
     func insertEditor() {
-        guard let file = editor?.finish() else { return }
-        onClose()
-        Inserter.shared.insert(file, reactivate: false)
+        Task {
+            guard let file = await editor?.finish() else { return }
+            onClose()
+            Inserter.shared.insert(file, reactivate: false)
+        }
     }
 
     func copyEditor() {
-        guard let file = editor?.finish() else { return }
-        Inserter.shared.copy(file)
-        onClose()
-        Toast.show("Copied")
+        Task {
+            guard let file = await editor?.finish() else { return }
+            Inserter.shared.copy(file)
+            onClose()
+            Toast.show("Copied")
+        }
     }
 
     func downloadEditor() {
-        guard let editor, let file = editor.finish() else { return }
-        Inserter.shared.download(file, name: editor.template.name)
-        onClose()
+        Task {
+            guard let editor, let file = await editor.finish() else { return }
+            Inserter.shared.download(file, name: editor.template.name)
+            onClose()
+        }
     }
 
     func editAgain(_ meme: SavedMeme) {
@@ -309,10 +315,13 @@ private struct QuickEditor: View {
             HStack(spacing: 8) {
                 Hint(key: "⎋", label: "Back")
                 Spacer()
+                if editor.isFinishing {
+                    ProgressView().controlSize(.small)
+                }
                 Button("Download") { model.downloadEditor() }
                     .buttonStyle(.bordered)
                     .keyboardShortcut("s", modifiers: .command)
-                    .help("Save a PNG to Downloads (⌘S)")
+                    .help(editor.template.isVideo ? "Save the video to Downloads (⌘S)" : "Save a PNG to Downloads (⌘S)")
                 Button("Copy") { model.copyEditor() }
                     .buttonStyle(.bordered)
                     .keyboardShortcut("c", modifiers: [.command, .shift])
@@ -322,7 +331,7 @@ private struct QuickEditor: View {
                     .keyboardShortcut(.return, modifiers: .command)
                     .help("Paste into the app you were using (↩)")
             }
-            .disabled(editor.image == nil)
+            .disabled(editor.image == nil || editor.isFinishing)
             .padding(.horizontal, 14)
             .frame(height: 44)
         }

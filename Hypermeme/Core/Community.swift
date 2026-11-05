@@ -4,6 +4,7 @@ import Foundation
 ///
 /// Its index.json describes each one: other names, what's in the picture, what it means and
 /// tags, all of which search reads, so "coffee riot" finds a template named something else.
+/// A video meme also has a `videoURL`, and its image is the poster frame.
 nonisolated enum Community {
     static let index = URL(string: "https://raw.githubusercontent.com/alexisbcz/hypermeme-templates/main/index.json")!
 
@@ -24,6 +25,8 @@ nonisolated enum Community {
             let imageURL: URL
             let captionStrip: Bool
             let boxes: [Box]
+            var videoURL: URL?
+            var duration: Double?
         }
         /// Like `TextBox`, without the id and text.
         struct Box: Decodable {
@@ -60,10 +63,13 @@ nonisolated enum Community {
                 name: entry.name,
                 fileType: entry.imageURL.pathExtension.isEmpty ? "jpg" : entry.imageURL.pathExtension,
                 boxCount: boxes.count,
-                altNames: (entry.aliases + entry.tags + [entry.description, entry.usage]).joined(separator: ", "),
+                altNames: (entry.aliases + entry.tags + [entry.description, entry.usage] + (entry.videoURL == nil ? [] : ["video"]))
+                    .joined(separator: ", "),
                 boxes: boxes,
                 sourceImageURL: entry.imageURL,
-                captionStrip: entry.captionStrip
+                captionStrip: entry.captionStrip,
+                videoURL: entry.videoURL,
+                duration: entry.duration
             )
         }
     }

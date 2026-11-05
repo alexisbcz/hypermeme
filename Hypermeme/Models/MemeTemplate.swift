@@ -18,10 +18,15 @@ nonisolated struct MemeTemplate: Codable, Identifiable, Hashable, Sendable {
     var sourceImageURL: URL?
     /// Starts with a caption strip above the image, as memes posted on X are.
     var captionStrip: Bool?
+    /// A video meme's MP4. The image is then its poster: what search shows and captions are placed on.
+    var videoURL: URL?
+    /// A video's length in seconds.
+    var duration: Double?
 
     static let communityPrefix = "community-"
 
     var isUpload: Bool { id.hasPrefix("upload-") }
+    var isVideo: Bool { videoURL != nil }
 
     var imageURL: URL? {
         if let sourceImageURL { return sourceImageURL }

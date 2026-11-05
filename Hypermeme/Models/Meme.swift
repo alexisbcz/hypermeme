@@ -127,12 +127,14 @@ nonisolated struct MemeDocument: Codable, Hashable, Sendable {
     }
 }
 
-/// A finished meme, saved as a PNG in the library.
+/// A finished meme, saved as a PNG in the library, or as an MP4 with a PNG poster.
 nonisolated struct SavedMeme: Codable, Identifiable, Hashable, Sendable {
     var id = UUID()
     var name: String
     var document: MemeDocument
     var created = Date()
+    /// Optional, so memes saved before videos still load.
+    var isVideo: Bool?
 
     var caption: String { document.caption }
     var title: String { caption.isEmpty ? name : caption }

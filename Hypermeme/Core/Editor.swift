@@ -8,6 +8,8 @@ final class MemeEditor {
     private(set) var image: CGImage?
     private(set) var preview: CGImage?
     private(set) var failed = false
+    /// True while a video meme is being written, which takes a moment.
+    private(set) var isFinishing = false
     var selection: TextBox.ID?
     /// Text to place once the template's layout is known.
     @ObservationIgnored var prefilledText: [String] = []
@@ -48,6 +50,11 @@ final class MemeEditor {
             document.boxes[index].text = text
         }
         prefilledText = []
+        // A video is fetched while the captions are typed, so Insert doesn't wait for the download.
+        if template.isVideo {
+            let template = template
+            Task { _ = try? await Library.shared.video(for: template) }
+        }
         do {
             image = try await Library.shared.image(for: template)
             renderPreview()
@@ -81,9 +88,15 @@ final class MemeEditor {
         selection = document.boxes.first?.id
     }
 
-    /// Saves the meme to the library and returns its PNG.
-    func finish() -> URL? {
-        guard let image, let meme = Library.shared.save(document, on: image, template: template) else { return nil }
+    /// Saves the meme to the library and returns its PNG, or its MP4 for a video template.
+    func finish() async -> URL? {
+        guard let image, !isFinishing else { return nil }
+        isFinishing = true
+        defer { isFinishing = false }
+        guard let meme = await Library.shared.save(document, on: image, template: template) else {
+            Toast.show(template.isVideo ? "Couldn't make the video" : "Couldn't save the meme")
+            return nil
+        }
         return Library.shared.file(for: meme)
     }
 }

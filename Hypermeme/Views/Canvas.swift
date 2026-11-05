@@ -22,6 +22,12 @@ struct MemeCanvas: View {
                     }
                 }
                 .shadow(color: .black.opacity(0.18), radius: 10, y: 3)
+                .overlay(alignment: .bottomLeading) {
+                    if editor.template.isVideo {
+                        VideoBadge(duration: editor.template.duration)
+                            .help("A video: the captions are drawn on every frame")
+                    }
+                }
         } else if editor.failed {
             ContentUnavailableView {
                 Label("Couldn't Load the Image", systemImage: "wifi.exclamationmark")

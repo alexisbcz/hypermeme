@@ -1,4 +1,5 @@
 import Foundation
+import AVFoundation
 import CoreGraphics
 import Testing
 @testable import Hypermeme
@@ -234,5 +235,123 @@ import Testing
         let template = try JSONDecoder().decode(MemeTemplate.self, from: Data(saved.utf8))
         #expect(template.sourceImageURL == nil)
         #expect(template.imageURL?.absoluteString == "https://i.imgflip.com/30b1gx.jpg")
+    }
+}
+
+@Suite struct VideoMemes {
+    private let index = #"""
+    {"version":1,"templates":[{"id":"terry-davis-suck-it-up","name":"Terry Davis: Suck It Up","aliases":["suck it up","terry davis"],
+     "description":"Terry Davis in sunglasses on a street.","usage":"Tough love.","tags":["templeos","video"],"image":"image.jpg",
+     "width":720,"height":406,"video":"video.mp4","duration":13.4,"captionStrip":true,"boxes":[],"source":{"url":"u"},
+     "imageURL":"https://example.com/t/image.jpg","videoURL":"https://example.com/t/video.mp4"}]}
+    """#
+
+    @Test func readsTheVideoAndKeepsItsPosterForSearch() throws {
+        let template = try #require(Community.parse(Data(index.utf8)).first)
+        #expect(template.isVideo)
+        #expect(template.duration == 13.4)
+        #expect(template.videoURL?.lastPathComponent == "video.mp4")
+        #expect(template.thumbnailURL?.lastPathComponent == "image.jpg")
+        #expect(template.score(for: "terry davis video") != nil)
+        #expect(template.score(for: "templeos suck") != nil)
+    }
+
+    @Test func memesSavedBeforeVideosStillLoad() throws {
+        let saved = #"{"id":"6B29FC40-CA47-1067-B31D-00DD010662DA","name":"Drake","document":{"templateID":"a","boxes":[],"captionStrip":0},"created":0}"#
+        let meme = try JSONDecoder().decode(SavedMeme.self, from: Data(saved.utf8))
+        #expect(meme.isVideo == nil)
+    }
+
+    @Test func captionsAreClearExceptTheStripAndText() throws {
+        var document = MemeTemplate(id: "a", name: "A", captionStrip: true).startingDocument
+        document.boxes[0].text = "When the build passes"
+        let overlay = try #require(MemeRenderer.captions(document, size: CGSize(width: 400, height: 200)))
+        #expect(overlay.width == 400)
+        #expect(overlay.height == 256)
+        let pixels = try rgba(overlay)
+        #expect(alpha(pixels, overlay, x: 200, y: 250) == 0) // over the picture
+        #expect(alpha(pixels, overlay, x: 2, y: 2) == 255) // the strip
+    }
+
+    @Test func exportsCaptionsOnEveryFrameWithTheStripAbove() async throws {
+        let folder = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let source = folder.appending(path: "gray.mp4")
+        try await writeGrayVideo(to: source, size: CGSize(width: 320, height: 240))
+
+        var document = MemeTemplate(id: "a", name: "A", captionStrip: true).startingDocument
+        document.boxes[0].text = "Suck it up"
+        let output = folder.appending(path: "meme.mp4")
+        try await VideoExporter.export(source, document: document, to: output)
+
+        let asset = AVURLAsset(url: output)
+        let track = try #require(try await asset.loadTracks(withMediaType: .video).first)
+        let size = try await track.load(.naturalSize)
+        #expect(size.width == 320)
+        #expect(size.height == 306) // 240 * 1.28, rounded down to even
+
+        let generator = AVAssetImageGenerator(asset: asset)
+        generator.requestedTimeToleranceBefore = .zero
+        generator.requestedTimeToleranceAfter = .zero
+        let frame = try await generator.image(at: CMTime(value: 1, timescale: 2)).image
+        let pixels = try rgba(frame)
+        #expect(red(pixels, frame, x: 316, y: 4) > 230) // the strip is white
+        #expect(abs(Int(red(pixels, frame, x: 160, y: 200)) - 128) < 20) // the video is below it
+    }
+
+    @Test func withoutCaptionsTheVideoIsUntouched() async throws {
+        let folder = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let source = folder.appending(path: "gray.mp4")
+        try await writeGrayVideo(to: source, size: CGSize(width: 64, height: 64))
+        let output = folder.appending(path: "meme.mp4")
+        try await VideoExporter.export(source, document: MemeDocument(templateID: "a", boxes: []), to: output)
+        #expect(try Data(contentsOf: output) == Data(contentsOf: source))
+    }
+
+    // MARK: Helpers
+
+    /// Top row first.
+    private func rgba(_ image: CGImage) throws -> [UInt8] {
+        var pixels = [UInt8](repeating: 0, count: image.width * image.height * 4)
+        let context = try #require(CGContext(
+            data: &pixels, width: image.width, height: image.height, bitsPerComponent: 8, bytesPerRow: image.width * 4,
+            space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ))
+        context.draw(image, in: CGRect(x: 0, y: 0, width: image.width, height: image.height))
+        return pixels
+    }
+
+    private func alpha(_ pixels: [UInt8], _ image: CGImage, x: Int, y: Int) -> UInt8 { pixels[(y * image.width + x) * 4 + 3] }
+    private func red(_ pixels: [UInt8], _ image: CGImage, x: Int, y: Int) -> UInt8 { pixels[(y * image.width + x) * 4] }
+
+    /// One second of mid-gray frames.
+    private func writeGrayVideo(to url: URL, size: CGSize) async throws {
+        let writer = try AVAssetWriter(outputURL: url, fileType: .mp4)
+        let input = AVAssetWriterInput(mediaType: .video, outputSettings: [
+            AVVideoCodecKey: AVVideoCodecType.h264, AVVideoWidthKey: size.width, AVVideoHeightKey: size.height,
+        ])
+        let adaptor = AVAssetWriterInputPixelBufferAdaptor(assetWriterInput: input, sourcePixelBufferAttributes: [
+            kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,
+            kCVPixelBufferWidthKey as String: size.width, kCVPixelBufferHeightKey as String: size.height,
+        ])
+        writer.add(input)
+        writer.startWriting()
+        writer.startSession(atSourceTime: .zero)
+        for index in 0 ..< 10 {
+            while !input.isReadyForMoreMediaData { try await Task.sleep(for: .milliseconds(5)) }
+            var buffer: CVPixelBuffer?
+            CVPixelBufferPoolCreatePixelBuffer(nil, try #require(adaptor.pixelBufferPool), &buffer)
+            let pixels = try #require(buffer)
+            CVPixelBufferLockBaseAddress(pixels, [])
+            memset(CVPixelBufferGetBaseAddress(pixels), 128, CVPixelBufferGetDataSize(pixels))
+            CVPixelBufferUnlockBaseAddress(pixels, [])
+            adaptor.append(pixels, withPresentationTime: CMTime(value: CMTimeValue(index), timescale: 10))
+        }
+        input.markAsFinished()
+        await writer.finishWriting()
+        #expect(writer.status == .completed)
     }
 }

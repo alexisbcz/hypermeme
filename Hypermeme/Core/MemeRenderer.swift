@@ -40,6 +40,28 @@ nonisolated enum MemeRenderer {
         return context.makeImage()
     }
 
+    /// The captions alone, for drawing over a video: transparent, except for the white caption
+    /// strip above the picture. `size` is the picture's; the result is taller by the strip.
+    static func captions(_ document: MemeDocument, size: CGSize) -> CGImage? {
+        let canvas = CGSize(width: size.width.rounded(), height: (size.height * (1 + document.captionStrip)).rounded())
+        guard let context = CGContext(
+            data: nil,
+            width: Int(canvas.width),
+            height: Int(canvas.height),
+            bitsPerComponent: 8,
+            bytesPerRow: 0,
+            space: CGColorSpace(name: CGColorSpace.sRGB)!,
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ) else { return nil }
+        context.clear(CGRect(origin: .zero, size: canvas))
+        context.setFillColor(CGColor(red: 1, green: 1, blue: 1, alpha: 1))
+        context.fill(CGRect(x: 0, y: size.height.rounded(), width: canvas.width, height: canvas.height - size.height.rounded()))
+        for box in document.boxes where !box.text.isEmpty {
+            draw(box, in: context, canvas: canvas)
+        }
+        return context.makeImage()
+    }
+
     static func png(_ image: CGImage) -> Data? {
         let data = NSMutableData()
         guard let destination = CGImageDestinationCreateWithData(data, UTType.png.identifier as CFString, 1, nil) else { return nil }

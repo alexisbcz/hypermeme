@@ -58,6 +58,27 @@ extension MemeTemplate {
     }
 }
 
+/// Marks a video on its poster, with its length when known.
+struct VideoBadge: View {
+    var duration: Double?
+
+    var body: some View {
+        HStack(spacing: 3) {
+            Image(systemName: "play.fill")
+            if let duration {
+                Text(Duration.seconds(duration.rounded()).formatted(.time(pattern: .minuteSecond)))
+                    .monospacedDigit()
+            }
+        }
+        .font(.system(size: 10, weight: .semibold))
+        .foregroundStyle(.white)
+        .padding(.horizontal, 6)
+        .padding(.vertical, 3)
+        .background(.black.opacity(0.6), in: Capsule())
+        .padding(5)
+    }
+}
+
 struct TemplateCell: View {
     let template: MemeTemplate
     var isSelected = false
@@ -90,6 +111,9 @@ struct TemplateCell: View {
                         .help(library.isFavorite(template) ? "Remove from Favorites" : "Add to Favorites")
                     }
                 }
+                .overlay(alignment: .bottomLeading) {
+                    if template.isVideo { VideoBadge(duration: template.duration) }
+                }
             Text(template.name)
                 .font(.system(size: 11))
                 .foregroundStyle(Color.subdued)
@@ -120,12 +144,15 @@ struct MemeCell: View {
         let library = Library.shared
         let file = library.file(for: meme)
         VStack(spacing: 5) {
-            Thumbnail(url: file)
+            Thumbnail(url: library.thumbnail(for: meme))
                 .aspectRatio(1, contentMode: .fit)
                 .clipShape(.rect(cornerRadius: 9))
                 .overlay {
                     RoundedRectangle(cornerRadius: 9)
                         .strokeBorder(isSelected ? Color.accentColor : Color.hairline, lineWidth: isSelected ? 2.5 : 1)
+                }
+                .overlay(alignment: .bottomLeading) {
+                    if meme.isVideo == true { VideoBadge() }
                 }
             Text(meme.title)
                 .font(.system(size: 11))
