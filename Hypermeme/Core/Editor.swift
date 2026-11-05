@@ -7,6 +7,10 @@ final class MemeEditor {
     private(set) var template: MemeTemplate
     private(set) var image: CGImage?
     private(set) var preview: CGImage?
+    /// A video template's MP4, once downloaded, to play under the captions.
+    private(set) var video: URL?
+    /// For a video template: the captions alone, drawn over the playing video at the preview's size.
+    private(set) var captions: CGImage?
     private(set) var failed = false
     /// True while a video meme is being written, which takes a moment.
     private(set) var isFinishing = false
@@ -53,7 +57,7 @@ final class MemeEditor {
         // A video is fetched while the captions are typed, so Insert doesn't wait for the download.
         if template.isVideo {
             let template = template
-            Task { _ = try? await Library.shared.video(for: template) }
+            Task { [weak self] in self?.video = try? await Library.shared.video(for: template) }
         }
         do {
             image = try await Library.shared.image(for: template)
@@ -66,12 +70,21 @@ final class MemeEditor {
     private func renderPreview() {
         guard let image else { return }
         let document = document
+        let isVideo = template.isVideo
         renderTask?.cancel()
         renderTask = Task {
-            let rendered = await Task.detached(priority: .userInitiated) {
-                MemeRenderer.render(image, document: document, width: min(max(Double(image.width), 800), Self.previewWidth))
+            let (rendered, captions) = await Task.detached(priority: .userInitiated) {
+                let width = min(max(Double(image.width), 800), Self.previewWidth)
+                let picture = CGSize(width: width, height: (Double(image.height) * width / Double(image.width)).rounded())
+                return (
+                    MemeRenderer.render(image, document: document, width: width),
+                    isVideo ? MemeRenderer.captions(document, size: picture) : nil
+                )
             }.value
-            if !Task.isCancelled { preview = rendered }
+            if !Task.isCancelled {
+                preview = rendered
+                self.captions = captions
+            }
         }
     }
 

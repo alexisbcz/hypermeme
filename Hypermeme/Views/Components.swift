@@ -79,6 +79,15 @@ struct VideoBadge: View {
     }
 }
 
+extension MemeTemplate {
+    /// Where to play a video from: the downloaded copy when there is one, otherwise the web.
+    var playableURL: URL? {
+        guard let videoURL else { return nil }
+        let file = Library.folder.appending(path: "Templates/\(id).mp4")
+        return FileManager.default.fileExists(atPath: file.path) ? file : videoURL
+    }
+}
+
 struct TemplateCell: View {
     let template: MemeTemplate
     var isSelected = false
@@ -89,12 +98,19 @@ struct TemplateCell: View {
         let library = Library.shared
         VStack(spacing: 5) {
             Thumbnail(url: template.gridImageURL)
+                .overlay {
+                    // A video previews, muted, while the pointer is on it.
+                    if isHovered, let url = template.playableURL {
+                        LoopingVideo(url: url).allowsHitTesting(false)
+                    }
+                }
                 .aspectRatio(1, contentMode: .fit)
                 .clipShape(.rect(cornerRadius: 9))
                 .overlay {
                     RoundedRectangle(cornerRadius: 9)
                         .strokeBorder(isSelected ? Color.accentColor : Color.hairline, lineWidth: isSelected ? 2.5 : 1)
                 }
+                .onDisappear { isHovered = false }
                 .overlay(alignment: .topTrailing) {
                     if isHovered || library.isFavorite(template) {
                         Button {
@@ -139,12 +155,18 @@ struct MemeCell: View {
     var isSelected = false
     var onEdit: (() -> Void)?
     var onInsert: (() -> Void)?
+    @State private var isHovered = false
 
     var body: some View {
         let library = Library.shared
         let file = library.file(for: meme)
         VStack(spacing: 5) {
             Thumbnail(url: library.thumbnail(for: meme))
+                .overlay {
+                    if isHovered, meme.isVideo == true {
+                        LoopingVideo(url: file).allowsHitTesting(false)
+                    }
+                }
                 .aspectRatio(1, contentMode: .fit)
                 .clipShape(.rect(cornerRadius: 9))
                 .overlay {
@@ -160,9 +182,14 @@ struct MemeCell: View {
                 .lineLimit(1)
         }
         .contentShape(.rect)
+        .onHover { isHovered = $0 }
+        .onDisappear { isHovered = false }
         .draggable(file)
         .contextMenu {
             if let onInsert { Button("Insert", action: onInsert) }
+            if meme.isVideo == true {
+                Button("Play") { NSWorkspace.shared.open(file) }
+            }
             Button("Copy") { Inserter.shared.copy(file) }
             Button("Download") { Inserter.shared.download(file, name: meme.name) }
             if let onEdit { Button("Edit Again", action: onEdit) }
@@ -170,6 +197,26 @@ struct MemeCell: View {
             Divider()
             Button("Delete", role: .destructive) { library.delete(meme) }
         }
+    }
+}
+
+/// All, images or videos, as three small icons.
+struct MediaFilterPicker: View {
+    @Binding var filter: MediaFilter
+
+    var body: some View {
+        Picker("Show", selection: $filter) {
+            ForEach(MediaFilter.allCases) { filter in
+                Image(systemName: filter.symbol)
+                    .help(filter.title)
+                    .accessibilityLabel(filter.title)
+                    .tag(filter)
+            }
+        }
+        .pickerStyle(.segmented)
+        .labelsHidden()
+        .fixedSize()
+        .help("Show all memes, only images, or only videos")
     }
 }
 

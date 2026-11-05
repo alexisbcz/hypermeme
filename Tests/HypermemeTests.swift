@@ -256,6 +256,12 @@ import Testing
         #expect(template.score(for: "templeos suck") != nil)
     }
 
+    @Test func filtersImagesFromVideos() {
+        #expect(MediaFilter.all.allows(isVideo: true) && MediaFilter.all.allows(isVideo: false))
+        #expect(MediaFilter.videos.allows(isVideo: true) && !MediaFilter.videos.allows(isVideo: false))
+        #expect(MediaFilter.images.allows(isVideo: false) && !MediaFilter.images.allows(isVideo: true))
+    }
+
     @Test func memesSavedBeforeVideosStillLoad() throws {
         let saved = #"{"id":"6B29FC40-CA47-1067-B31D-00DD010662DA","name":"Drake","document":{"templateID":"a","boxes":[],"captionStrip":0},"created":0}"#
         let meme = try JSONDecoder().decode(SavedMeme.self, from: Data(saved.utf8))

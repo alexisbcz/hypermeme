@@ -29,6 +29,13 @@ struct MainView: View {
         .background(Color.canvas)
         .toolbarBackground(Color.canvas, for: .windowToolbar)
         .searchable(text: $model.browse.query, placement: .toolbar, prompt: "Search memes")
+        .toolbar {
+            if model.editor == nil {
+                ToolbarItem(placement: .primaryAction) {
+                    MediaFilterPicker(filter: $model.browse.filter)
+                }
+            }
+        }
         .onChange(of: model.browse.query) { _, query in
             if !query.isEmpty { model.closeEditor() }
         }

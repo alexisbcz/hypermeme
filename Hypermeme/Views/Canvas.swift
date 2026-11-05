@@ -3,12 +3,15 @@ import SwiftUI
 /// The live meme, with its text boxes to drag, resize and click on.
 struct MemeCanvas: View {
     @Bindable var editor: MemeEditor
+    @State private var isPlaying = true
+    @AppStorage("videoSound") private var sound = false
 
     var body: some View {
         if let preview = editor.preview {
             Image(decorative: preview, scale: 1)
                 .resizable()
                 .aspectRatio(contentMode: .fit)
+                .overlay { video }
                 .overlay {
                     GeometryReader { proxy in
                         ForEach($editor.document.boxes) { $box in
@@ -23,10 +26,7 @@ struct MemeCanvas: View {
                 }
                 .shadow(color: .black.opacity(0.18), radius: 10, y: 3)
                 .overlay(alignment: .bottomLeading) {
-                    if editor.template.isVideo {
-                        VideoBadge(duration: editor.template.duration)
-                            .help("A video: the captions are drawn on every frame")
-                    }
+                    if editor.template.isVideo { controls }
                 }
         } else if editor.failed {
             ContentUnavailableView {
@@ -37,6 +37,53 @@ struct MemeCanvas: View {
         } else {
             ProgressView()
         }
+    }
+}
+
+extension MemeCanvas {
+    /// The video plays where the picture is, below the caption strip, with the captions drawn over it.
+    @ViewBuilder fileprivate var video: some View {
+        if let url = editor.video {
+            GeometryReader { proxy in
+                let picture = proxy.size.height / (1 + editor.document.captionStrip)
+                LoopingVideo(url: url, isMuted: !sound, isPlaying: isPlaying)
+                    .frame(width: proxy.size.width, height: picture)
+                    .offset(y: proxy.size.height - picture)
+            }
+            .allowsHitTesting(false)
+            if let captions = editor.captions {
+                Image(decorative: captions, scale: 1)
+                    .resizable()
+                    .allowsHitTesting(false)
+            }
+        }
+    }
+
+    fileprivate var controls: some View {
+        HStack(spacing: 2) {
+            Button { isPlaying.toggle() } label: {
+                Image(systemName: isPlaying ? "pause.fill" : "play.fill").frame(width: 22, height: 18)
+            }
+            .help(isPlaying ? "Pause" : "Play")
+            Button { sound.toggle() } label: {
+                Image(systemName: sound ? "speaker.wave.2.fill" : "speaker.slash.fill").frame(width: 22, height: 18)
+            }
+            .help(sound ? "Mute" : "Play the sound")
+            if let duration = editor.template.duration {
+                Text(Duration.seconds(duration.rounded()).formatted(.time(pattern: .minuteSecond)))
+                    .monospacedDigit()
+                    .padding(.trailing, 5)
+            }
+        }
+        .buttonStyle(.plain)
+        .font(.system(size: 11, weight: .semibold))
+        .foregroundStyle(.white)
+        .padding(3)
+        .background(.black.opacity(0.6), in: Capsule())
+        .padding(6)
+        .opacity(editor.video == nil ? 0.5 : 1)
+        .disabled(editor.video == nil)
+        .help(editor.video == nil ? "Loading the video" : "")
     }
 }
 

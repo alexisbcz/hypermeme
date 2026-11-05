@@ -26,11 +26,43 @@ enum BrowseSection: String, CaseIterable, Identifiable {
     }
 }
 
+/// Which kind of meme to show.
+nonisolated enum MediaFilter: String, CaseIterable, Identifiable, Sendable {
+    case all, images, videos
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .all: "All"
+        case .images: "Images"
+        case .videos: "Videos"
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .all: "square.grid.2x2"
+        case .images: "photo"
+        case .videos: "play.rectangle"
+        }
+    }
+
+    func allows(isVideo: Bool) -> Bool {
+        switch self {
+        case .all: true
+        case .images: !isVideo
+        case .videos: isVideo
+        }
+    }
+}
+
 /// What a search field and a section show. Local matches appear at once; imgflip's follow.
 @Observable
 final class BrowseModel {
     var section = BrowseSection.popular { didSet { search() } }
     var query = "" { didSet { if query != oldValue { search() } } }
+    var filter = MediaFilter.all
     private(set) var remote: [MemeTemplate] = []
     private(set) var isSearching = false
     private(set) var searchFailed = false
@@ -43,11 +75,16 @@ final class BrowseModel {
     private var trimmedQuery: String { query.trimmingCharacters(in: .whitespaces) }
 
     var templates: [MemeTemplate] {
+        unfilteredTemplates.filter { filter.allows(isVideo: $0.isVideo) }
+    }
+
+    private var unfilteredTemplates: [MemeTemplate] {
         let library = Library.shared
         let query = trimmedQuery
         switch section {
         case .popular:
-            guard !query.isEmpty else { return library.popular }
+            // imgflip's popular list has no videos, so asking for videos lists all of them.
+            guard !query.isEmpty else { return filter == .videos ? library.videoTemplates : library.popular }
             let local = library.localMatches(query)
             let seen = Set(local.map(\.id))
             return local + remote.filter { !seen.contains($0.id) }
@@ -68,7 +105,7 @@ final class BrowseModel {
 
     var memes: [SavedMeme] {
         let query = trimmedQuery.lowercased()
-        let memes = Library.shared.memes
+        let memes = Library.shared.memes.filter { filter.allows(isVideo: $0.isVideo == true) }
         guard !query.isEmpty else { return memes }
         let words = query.split(separator: " ").map(String.init)
         return memes.filter { meme in

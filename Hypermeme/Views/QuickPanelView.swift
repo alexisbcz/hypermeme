@@ -136,6 +136,7 @@ private struct QuickBrowser: View {
         .onChange(of: model.openCount) { searchFocused = true }
         .onChange(of: model.browse.section) { model.selectedIndex = 0 }
         .onChange(of: model.browse.query) { model.selectedIndex = 0 }
+        .onChange(of: model.browse.filter) { model.selectedIndex = 0 }
         .onExitCommand { handleEscape() }
     }
 
@@ -168,6 +169,8 @@ private struct QuickBrowser: View {
             if model.browse.isSearching {
                 ProgressView().controlSize(.small)
             }
+            MediaFilterPicker(filter: $model.browse.filter)
+                .controlSize(.small)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 13)
@@ -236,6 +239,8 @@ private struct QuickBrowser: View {
         } else if !browse.query.isEmpty {
             if browse.isSearching {
                 ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if browse.filter == .videos {
+                EmptyHint(symbol: "play.rectangle", title: "No Videos", detail: "No video memes match. Try All to see images too.")
             } else {
                 EmptyHint(symbol: "magnifyingglass", title: "No Matches", detail: "Try another name for the meme.")
             }

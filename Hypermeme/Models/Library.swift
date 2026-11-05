@@ -136,6 +136,12 @@ final class Library {
     }
 
     var favoriteTemplates: [MemeTemplate] { favorites.compactMap(template(id:)) }
+
+    /// Every video template, by name.
+    var videoTemplates: [MemeTemplate] {
+        _ = communityVersion
+        return known.values.filter(\.isVideo).sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+    }
     var recentTemplates: [MemeTemplate] { recents.compactMap(template(id:)) }
 
     /// Every template Hypermeme has seen that matches, best first.
